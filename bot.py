@@ -1,11 +1,3 @@
-"""
-Copyright © Krypton 2019-2023 - https://github.com/kkrypt0nn (https://krypton.ninja)
-Description:
-🐍 A simple template to start to code your own and personalized discord bot in Python programming language.
-
-Version: 5.5.0
-"""
-
 import asyncio
 import json
 import logging
@@ -62,13 +54,7 @@ intents.presences = True
 
 intents = discord.Intents.default()
 
-"""
-Uncomment this if you want to use prefix (normal) commands.
-It is recommended to use slash commands and therefore not use prefix commands.
-
-If you want to use prefix commands, make sure to also enable the intent below in the Discord developer portal.
-"""
-# intents.message_content = True
+intents.message_content = True
 
 bot = Bot(
     command_prefix=commands.when_mentioned_or(config["prefix"]),
@@ -171,7 +157,7 @@ async def status_task() -> None:
     """
     Setup the game status task of the bot.
     """
-    statuses = ["with you!", "with Krypton!", "with humans!"]
+    statuses = ["with you!", "with fay!", "with humans!"]
     await bot.change_presence(activity=discord.Game(random.choice(statuses)))
 
 
