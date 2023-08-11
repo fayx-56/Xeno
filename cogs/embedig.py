@@ -9,7 +9,7 @@ import requests
 class MyCog(commands.Cog,name="embedig",description="sends ig embeds in #memes"):
     def __init__(self, bot):
         self.bot = bot
-        self.webhook_url = 'https://discord.com/api/webhooks/1087003926223663204/gMFv3leohtr5yPP7zYdT3LHN9kRpWzXjD53vu28_nwX3wWar2belnLosFqRz2oMk7Y0S'  # Replace with your webhook URL
+        self.webhook_url = 'https://discord.com/api/webhooks/1138068053834334268/J8pxJtcdXtSKuRfZfCgiNBYaj9q2t1p6wbd8x-jZaNtEo_5bY7w-k5rXWFwS8TitHwNk'  # Replace with your webhook URL
 
     @commands.Cog.listener()
     async def on_message(self, message):
