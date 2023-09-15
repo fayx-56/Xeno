@@ -3,6 +3,7 @@ import discord
 import random
 import string
 import json
+import requests
 
 
 # import sys
@@ -63,27 +64,54 @@ class WordChain(commands.Cog,name="wordchain"):
             if word.endswith(c):
                 ending_count += 1
         return  ending_count
+    
+    def word_meaning(self, word):
+        api_url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
 
-    def get_leaderboard_embed(self):
+    # Make a GET request to the API
+        response = requests.get(api_url)
+
+    # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+        # Parse the JSON response
+            data = response.json()
+
+        # Iterate through the meanings and get the first noun definition
+            for meaning in data[0]["meanings"]:
+                part_of_speech = meaning["partOfSpeech"]
+                if part_of_speech == "noun":
+                    definition = meaning["definitions"][0]  # Get the first definition
+                    meaning_string = f"Definition of {word}: {definition['definition']}\n"
+                    if 'example' in definition:
+                        meaning_string += f"  Example: {definition['example']}\n"
+                    return meaning_string
+
+            return f"No noun definition found for '{word}'"
+        else:
+            return f"Failed to fetch definitions for the word '{word}'"
+
+    def get_leaderboard_embed(self, leaderboard_data):
         r = random.randint(0, 255)
         g = random.randint(0, 255)
         b = random.randint(0, 255)
-        leaderboard = dict(sorted(self.leaderboard.items(), key=lambda item: item[1], reverse=True))
+        leaderboard = dict(sorted(leaderboard_data.items(), key=lambda item: item[1], reverse=True))
         embed = discord.Embed(title="Leaderboard", description="XENO Word Chain Leaderboard", color=discord.Color.from_rgb(r, g, b))
         for i, (key, value) in enumerate(leaderboard.items()):
             if i >= 5:
                 break
             embed.add_field(name=key, value=value, inline=False)
         return embed
+
     
     def get_new_user_embed(self):
         r = random.randint(0, 255)
         g = random.randint(0, 255)
         b = random.randint(0, 255)
         
-        embed = discord.Embed(title="Welcome to Xeon Word Chain V3", description="Read rules and highlights for gaining an easy spot on the leaderboard.", color=discord.Color.from_rgb(r, g, b))
+        embed = discord.Embed(title="Welcome to Xeon Word Chain V3", description="Read pinned Rules for gaining an easy spot on the leaderboard.", color=discord.Color.from_rgb(r, g, b))
         embed.add_field(name="Scoring System", value=f"Each word earns a base point. If a word starts and ends with the same alphabet, the player earns double the base points, base point is {self.base_score} right now",inline=False)
         embed.add_field(name="y?", value='The letter "y" is no longer an issue, after 500 words with Y have been recorded', inline=False)
+        embed.add_field(name="**Word Meaning**", value='now you can find the meaning of the word my adding .m at the end ex - harbinger.m', inline=False)
         embed.set_footer(text="To learn more about what I'm currently working on, feel free to check out the threads or pinned messages.")
         return embed
 
@@ -117,12 +145,12 @@ class WordChain(commands.Cog,name="wordchain"):
 
     @commands.hybrid_command(name='lb', description="check word chain leaderboard")
     async def show_leaderboard(self, ctx):
-        embed = self.get_leaderboard_embed()
+        embed = self.get_leaderboard_embed(self.leaderboard)
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='glb', description="check word chain global leaderboard")
     async def show_global_leaderboard(self, ctx):
-        embed = self.get_leaderboard_embed()
+        embed = self.get_leaderboard_embed(self.global_leaderboard)
         await ctx.send(embed=embed)
     
     
@@ -149,12 +177,8 @@ class WordChain(commands.Cog,name="wordchain"):
             json.dump(self.leaderboard, f)
 
     # Update global_leaderboard and save to global_leaderboard.json
-        new_dict = {}
-        for key in self.leaderboard.keys() | self.global_leaderboard.keys():
-            new_dict[key] = self.leaderboard.get(key, 0) + self.global_leaderboard.get(key, 0)
-
         with open(FolderName + "global_leaderboard.json", "w") as f:
-            json.dump(new_dict, f)
+            json.dump(self.global_leaderboard, f)
 
         await ctx.send(f"Logs saved for **{ctx.author.name}**")
 
@@ -174,13 +198,22 @@ class WordChain(commands.Cog,name="wordchain"):
 
         if content.startswith('.ct'):
             starting_count, ending_count = self.count_words_starting_and_ending_with(content[4:])
-            await message.channel.send(f"{content[3:]} s  starting count is **{starting_count}**")
-            await message.channel.send(f"{content[3:]} s  ending count is **{ending_count}**")
+            await message.channel.send(f"The count of words starting with **{content[3:]}** is **{starting_count}**")
+            await message.channel.send(f"The count of words ending with **{content[3:]}** is **{ending_count}**")
             return 
-        
+
+        meaning_flag = False
+        if content.endswith('.m'):
+            meaning_flag = True
+            content = content[:-2]
+          
 
         # Ignore invalid inputs
         if any(x in content for x in [' ', ':','.']):
+            return
+        
+        if  meaning_flag and content in self.used_words:
+            await message.channel.send(self.word_meaning(content))
             return
 
         # Check if it's the user's turn
@@ -195,20 +228,25 @@ class WordChain(commands.Cog,name="wordchain"):
 
         # Check if the word is valid and hasn't been used before
         if len(content) < 3:
-            await message.channel.send("The word should consist of at least 3 letters.")
+            await message.channel.send("Your word must possess a minimum of 3 letters to qualify.")
         elif content in self.used_words:
-            await message.channel.send("Sorry, that word was already used. Please try another word.")
+            await message.channel.send("Apologies, but that particular word has already graced our vocabulary. try again?")
         elif content not in WORDS:
-            await message.channel.send(f"'{content}' is present not in my dictionary")
+            await message.channel.send(f"My dictionary's pages lack the word '{content}'")
         else:
             # Add score to the leaderboard
             score = self.base_score*2 if content[0] == content[-1] else self.base_score # type: ignore
-            if message.author.name not in self.leaderboard:
-                self.leaderboard[message.author.name] = score
+            if message.author.name not in self.leaderboard: 
+                self.leaderboard[message.author.name] = score 
                 embed = self.get_new_user_embed()
                 await message.channel.send(embed=embed)
             else:
                 self.leaderboard[message.author.name] += score
+            if message.author.name not in self.global_leaderboard:
+                self.leaderboard[message.author.name] = score
+            else:
+                self.global_leaderboard[message.author.name] += score 
+                
 
             # Update game state
             self.used_words.add(content)
@@ -222,6 +260,9 @@ class WordChain(commands.Cog,name="wordchain"):
                 self.base_score = self.base_score + 1 # type: ignore
             # Send confirmation message
             await message.add_reaction('✅')
+            if(meaning_flag):
+                # meaning_result = self.word_meaning(content)
+                await message.channel.send(self.word_meaning(content))
             if(content[-1] == 'y' and self.ycount>500):
                 ctx = await self.bot.get_context(message)
                 await ctx.invoke(self.new_word)
