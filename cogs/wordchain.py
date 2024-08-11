@@ -1,7 +1,6 @@
 from discord.ext import commands, tasks
 import discord
 import random
-import string
 import json
 import requests
 
@@ -223,16 +222,16 @@ class WordChain(commands.Cog,name="wordchain"):
 
         # Check if the word starts with the correct letter
         if not content.startswith(self.pword):
-            await message.channel.send(f"Sorry, that word does not start with '{self.pword}'. Please try again.")
+            await message.channel.send(f"Apologies, the designated term lacks initiation with '{self.pword}'. Please try again.")
             return
 
         # Check if the word is valid and hasn't been used before
         if len(content) < 3:
-            await message.channel.send("Your word must possess a minimum of 3 letters to qualify.")
+            await message.channel.send("Word must exceed a three-letter threshold for consideration.")
         elif content in self.used_words:
-            await message.channel.send("Apologies, but that particular word has already graced our vocabulary. try again?")
+            await message.channel.send("Wait.. but the chosen term has already embedded itself in our lexicon... try again?")
         elif content not in WORDS:
-            await message.channel.send(f"My dictionary's pages lack the word '{content}'")
+            await message.channel.send(f"Within my lexicon's confines, the term '{content}' remains conspicuously absent.")
         else:
             # Add score to the leaderboard
             score = self.base_score*2 if content[0] == content[-1] else self.base_score # type: ignore
@@ -243,7 +242,7 @@ class WordChain(commands.Cog,name="wordchain"):
             else:
                 self.leaderboard[message.author.name] += score
             if message.author.name not in self.global_leaderboard:
-                self.leaderboard[message.author.name] = score
+                self.global_leaderboard[message.author.name] = score
             else:
                 self.global_leaderboard[message.author.name] += score 
                 
@@ -273,8 +272,7 @@ class WordChain(commands.Cog,name="wordchain"):
             return 2
         else:
             return len(used_words) // 1000 + 2
-                
-            
+        
 
 async def setup(bot):
     await bot.add_cog(WordChain(bot))
